@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Keep the existing CSS -->
+    <style>
+        /* Previous CSS remains unchanged */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #qrcode {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+        }
+
+        #qrcode img {
+            margin: 0 auto;
+        }
+
+        .checkbox-group {
+            margin: 15px 0;
+        }
+
+        .logo-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #logoPreview {
+            max-width: 100px;
+            max-height: 100px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .logo-settings {
+            margin-top: 10px;
+        }
+
+        .size-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #sizeValue {
+            min-width: 60px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Keep the existing HTML structure -->
+    <div class="container">
+        <h1>QR Code Generator</h1>
+        
+        <div class="input-group">
+            <label for="qrType">QR Code Type</label>
+            <select id="qrType">
+                <option value="text">Text</option>
+                <option value="url">URL</option>
+                <option value="email">Email</option>
+                <option value="phone">Phone Number</option>
+                <option value="sms">SMS</option>
+                <option value="wifi">WiFi Network</option>
+                <option value="vcard">Contact Card</option>
+            </select>
+        </div>
+
+        <div id="inputFields"></div>
+
+        <div class="checkbox-group">
+            <label>
+                <input type="checkbox" id="enableLogo"> Add Logo to QR Code
+            </label>
+        </div>
+
+        <div id="logoSection" class="logo-section">
+            <div class="input-group">
+                <label for="logoFile">Upload Logo (PNG/JPG recommended)</label>
+                <input type="file" id="logoFile" accept="image/*">
+                <img id="logoPreview" alt="Logo preview">
+            </div>
+            <div class="logo-settings">
+                <label for="logoSize">Logo Size (%)</label>
+                <div class="size-group">
+                    <input type="range" id="logoSize" min="10" max="30" value="20">
+                    <span id="sizeValue">20%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="qrSize">QR Code Size</label>
+            <input type="range" id="qrSize" min="100" max="400" value="200" step="50">
+            <span id="qrSizeValue">200 x 200</span>
+        </div>
+
+        <button onclick="generateQRCode()">Generate QR Code</button>
+        <div id="error" class="error"></div>
+        <div id="qrcode"></div>
+    </div>
+
+    <script>
+        // Keep the existing input templates and basic functions
+        const inputTemplates = {
+            // ... (keep all the existing templates)
+            text: `
+                <div class="input-group">
+                    <label for="content">Enter Text</label>
+                    <textarea id="content" rows="3"></textarea>
+                </div>
+            `,
+            url: `
+                <div class="input-group">
+                    <label for="content">Enter URL</label>
+                    <input type="url" id="content" placeholder="https://example.com">
+                </div>
+            `,
+            email: `
+                <div class="input-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="example@email.com">
+                </div>
+                <div class="input-group">
+                    <label for="subject">Subject (Optional)</label>
+                    <input type="text" id="subject">
+                </div>
+                <div class="input-group">
+                    <label for="body">Message (Optional)</label>
+                    <textarea id="body" rows="3"></textarea>
+                </div>
+            `,
+            phone: `
+                <div class="input-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" placeholder="+1234567890">
+                </div>
+            `,
+            sms: `
+                <div class="input-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" placeholder="+1234567890">
+                </div>
+                <div class="input-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" rows="3"></textarea>
+                </div>
+            `,
+            wifi: `
+                <div class="input-group">
+                    <label for="ssid">Network Name (SSID)</label>
+                    <input type="text" id="ssid">
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password">
+                </div>
+                <div class="input-group">
+                    <label for="encryption">Encryption Type</label>
+                    <select id="encryption">
+                        <option value="WPA">WPA/WPA2</option>
+                        <option value="WEP">WEP</option>
+                        <option value="nopass">None</option>
+                    </select>
+                </div>
+            `,
+            vcard: `
+                <div class="input-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name">
+                </div>
+                <div class="input-group">
+                    <label for="vcardEmail">Email</label>
+                    <input type="email" id="vcardEmail">
+                </div>
+                <div class="input-group">
+                    <label for="vcardPhone">Phone</label>
+                    <input type="tel" id="vcardPhone">
+                </div>
+                <div class="input-group">
+                    <label for="organization">Organization</label>
+                    <input type="text" id="organization">
+                </div>
+            `
+        };
+
+        // Event Listeners
+        document.getElementById('qrType').addEventListener('change', updateInputFields);
+        document.getElementById('enableLogo').addEventListener('change', toggleLogoSection);
+        document.getElementById('logoFile').addEventListener('change', handleLogoUpload);
+        document.getElementById('logoSize').addEventListener('input', updateLogoSizeValue);
+        document.getElementById('qrSize').addEventListener('input', updateQRSizeValue);
+
+        // Initialize input fields
+        updateInputFields();
+
+        function updateInputFields() {
+            const type = document.getElementById('qrType').value;
+            document.getElementById('inputFields').innerHTML = inputTemplates[type];
+        }
+
+        function toggleLogoSection() {
+            const logoSection = document.getElementById('logoSection');
+            logoSection.style.display = document.getElementById('enableLogo').checked ? 'block' : 'none';
+        }
+
+        function handleLogoUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('logoPreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updateLogoSizeValue() {
+            document.getElementById('sizeValue').textContent = 
+                document.getElementById('logoSize').value + '%';
+        }
+
+        function updateQRSizeValue() {
+            const size = document.getElementById('qrSize').value;
+            document.getElementById('qrSizeValue').textContent = `${size} x ${size}`;
+        }
+
+        function getQRContent() {
+            const type = document.getElementById('qrType').value;
+            let content = '';
+
+            switch(type) {
+                case 'text':
+                case 'url':
+                    content = document.getElementById('content').value;
+                    if (type === 'url' && !content.startsWith('http')) {
+                        content = 'https://' + content;
+                    }
+                    break;
+                case 'email':
+                    const email = document.getElementById('email').value;
+                    const subject = document.getElementById('subject').value;
+                    const body = document.getElementById('body').value;
+                    content = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    break;
+                case 'phone':
+                    content = 'tel:' + document.getElementById('phone').value;
+                    break;
+                case 'sms':
+                    const phone = document.getElementById('phone').value;
+                    const message = document.getElementById('message').value;
+                    content = `sms:${phone}:${encodeURIComponent(message)}`;
+                    break;
+                case 'wifi':
+                    const ssid = document.getElementById('ssid').value;
+                    const password = document.getElementById('password').value;
+                    const encryption = document.getElementById('encryption').value;
+                    content = `WIFI:T:${encryption};S:${ssid};P:${password};;`;
+                    break;
+                case 'vcard':
+                    const name = document.getElementById('name').value;
+                    const vcardEmail = document.getElementById('vcardEmail').value;
+                    const vcardPhone = document.getElementById('vcardPhone').value;
+                    const org = document.getElementById('organization').value;
+                    content = `BEGIN:VCARD\nVERSION:3.0\nN:${name}\nEMAIL:${vcardEmail}\nTEL:${vcardPhone}\nORG:${org}\nEND:VCARD`;
+                    break;
+            }
+            return content;
+        }
+
+        // New function to merge logo with QR code
+        function mergeLogoWithQR(qrCanvas, logoImg, logoSize) {
+            const canvas = document.createElement('canvas');
+            const size = qrCanvas.width;
+            canvas.width = size;
+            canvas.height = size;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Draw QR code
+            ctx.drawImage(qrCanvas, 0, 0, size, size);
+            
+            // Calculate logo size and position
+            const logoWidth = size * (logoSize / 100);
+            const logoHeight = logoWidth;
+            const logoX = (size - logoWidth) / 2;
+            const logoY = (size - logoHeight) / 2;
+            
+            // Create white background for logo
+            ctx.fillStyle = 'white';
+            ctx.fillRect(logoX, logoY, logoWidth, logoHeight);
+            
+            // Draw logo
+            ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
+            
+            return canvas.toDataURL();
+        }
+
+        // Modified generateQRCode function
+        function generateQRCode() {
+            const content = getQRContent();
+            const size = document.getElementById('qrSize').value;
+            const qrcodeDiv = document.getElementById('qrcode');
+            const errorDiv = document.getElementById('error');
+            const enableLogo = document.getElementById('enableLogo').checked;
+            
+            // Clear previous QR code and errors
+            qrcodeDiv.innerHTML = '';
+            errorDiv.style.display = 'none';
+
+            if (!content) {
+                errorDiv.textContent = 'Please fill in the required fields';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                // Create QR code
+                const qr = new QRCode(qrcodeDiv, {
+                    text: content,
+                    width: parseInt(size),
+                    height: parseInt(size),
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                // If logo is enabled, merge it with QR code
+                if (enableLogo) {
+                    const logoImg = document.getElementById('logoPreview');
+                    if (logoImg.src) {
+                        // Wait for QR code to be generated
+                        setTimeout(() => {
+                            const qrCanvas = qrcodeDiv.querySelector('canvas');
+                            const logoSize = document.getElementById('logoSize').value;
+                            
+                            // Create new image with merged content
+                            const mergedImage = new Image();
+                            mergedImage.src = mergeLogoWithQR(qrCanvas, logoImg, logoSize);
+                            
+                            // Replace QR code with merged version
+                            qrcodeDiv.innerHTML = '';
+                            qrcodeDiv.appendChild(mergedImage);
+                        }, 50);
+                    }
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Error generating QR code. Please check your inputs.';
+                errorDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
